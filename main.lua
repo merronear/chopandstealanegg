@@ -8,7 +8,6 @@ if game.PlaceId ~= ID_GAME_ANDA then
     return 
 end
 
--- Menghapus panel lama jika sebelumnya sudah aktif agar tidak menumpuk di layar
 if game.Players.LocalPlayer.PlayerGui:FindFirstChild("DeltaCustomPanel") then
     game.Players.LocalPlayer.PlayerGui.DeltaCustomPanel:Destroy()
 end
@@ -24,7 +23,7 @@ ScreenGui.Parent = PlayerGui
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 300, 0, 185) -- Ukuran pas untuk 2 tombol toggle
+MainFrame.Size = UDim2.new(0, 300, 0, 185) 
 MainFrame.Position = UDim2.new(0.5, -150, 0.5, -92)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MainFrame.BorderSizePixel = 0
@@ -32,20 +31,18 @@ MainFrame.Active = true
 MainFrame.Draggable = true 
 MainFrame.Parent = ScreenGui
 
--- Top Bar
 local TopBar = Instance.new("Frame")
 TopBar.Name = "TopBar"
 TopBar.Size = UDim2.new(1, 0, 0, 30)
-TopBar.BackgroundColor3 = Color3.fromRGB(75, 55, 110) -- Warna ungu khas Celestial
+TopBar.BackgroundColor3 = Color3.fromRGB(75, 55, 110) 
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
--- Judul Panel
 local Title = Instance.new("TextLabel")
 Title.Name = "Title"
 Title.Size = UDim2.new(1, -40, 1, 0)
 Title.Position = UDim2.new(0, 10, 0, 0)
-Title.Text = "Celestial Helper v3"
+Title.Text = "Celestial Helper v3.1"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
@@ -53,7 +50,6 @@ Title.Font = Enum.Font.SourceSansBold
 Title.TextSize = 16
 Title.Parent = TopBar
 
--- Tombol Minimize / Maximize
 local MinMaxBtn = Instance.new("TextButton")
 MinMaxBtn.Name = "MinMaxBtn"
 MinMaxBtn.Size = UDim2.new(0, 30, 0, 30)
@@ -66,7 +62,6 @@ MinMaxBtn.Font = Enum.Font.SourceSansBold
 MinMaxBtn.TextSize = 18
 MinMaxBtn.Parent = TopBar
 
--- Konten Utama
 local ContentFrame = Instance.new("Frame")
 ContentFrame.Name = "ContentFrame"
 ContentFrame.Size = UDim2.new(1, 0, 1, -30)
@@ -78,7 +73,6 @@ ContentFrame.Parent = MainFrame
 -- ==========================================
 -- 3. TOMBOL TOGGLE (AXE & CELESTIAL TREE)
 -- ==========================================
--- Tombol 1: Auto Hold Axe
 local HoldAxeBtn = Instance.new("TextButton")
 HoldAxeBtn.Name = "HoldAxeBtn"
 HoldAxeBtn.Size = UDim2.new(0, 260, 0, 40)
@@ -91,7 +85,6 @@ HoldAxeBtn.TextSize = 14
 HoldAxeBtn.BorderSizePixel = 0
 HoldAxeBtn.Parent = ContentFrame
 
--- Tombol 2: Go to Celestial Tree Terdekat
 local GoTreeBtn = Instance.new("TextButton")
 GoTreeBtn.Name = "GoTreeBtn"
 GoTreeBtn.Size = UDim2.new(0, 260, 0, 40)
@@ -111,7 +104,6 @@ local isMinimized = false
 _G.AutoHoldAxe = false
 _G.GoCelestialTree = false
 
--- Logik Minimize/Maximize
 MinMaxBtn.MouseButton1Click:Connect(function()
     if isMinimized then
         MainFrame:TweenSize(UDim2.new(0, 300, 0, 185), Enum.EasingDirection.Out, Enum.EasingStyle.Quart, 0.3, true)
@@ -157,7 +149,7 @@ HoldAxeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- LOGIK TOMBOL 2: Go to Nearest Celestial Tree (Mencari pohon terdekat)
+-- LOGIK TOMBOL 2: Go to Nearest Celestial Tree (Pencarian Lebih Pintar)
 GoTreeBtn.MouseButton1Click:Connect(function()
     _G.GoCelestialTree = not _G.GoCelestialTree
     if _G.GoCelestialTree then
@@ -170,31 +162,58 @@ GoTreeBtn.MouseButton1Click:Connect(function()
                 local character = player.Character
                 if character and character:FindFirstChild("HumanoidRootPart") then
                     
-                    local nearestTree = nil
+                    local nearestTreePart = nil
                     local shortestDistance = math.huge
                     
-                    -- Memindai seluruh Workspace untuk mencari objek bernama "Celestial Tree"
+                    -- Memindai Workspace dengan sistem kecocokan teks (Case-Insensitive)
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("Model") and obj.Name == "Celestial Tree" then
-                            local part = obj:FindFirstChild("Part") or obj:FindFirstChildOfClass("BasePart")
-                            if part then
-                                local distance = (character.HumanoidRootPart.Position - part.Position).Magnitude
+                        local namaObjek = string.lower(obj.Name)
+                        
+                        -- Deteksi jika objek mengandung kata celestial dan tree secara bersamaan
+                        if (string.match(namaObjek, "celestial") and string.match(namaObjek, "tree")) or namaObjek == "celestial tree" then
+                            -- Jika objek berupa Model, cari Part di dalamnya. Jika objek sudah berupa Part, langsung pakai.
+                            local targetPart = nil
+                            if obj:IsA("Model") then
+                                targetPart = obj:FindFirstChild("Part") or obj:FindFirstChildOfClass("BasePart")
+                            elseif obj:IsA("BasePart") then
+                                targetPart = obj
+                            end
+                            
+                            if targetPart then
+                                local distance = (character.HumanoidRootPart.Position - targetPart.Position).Magnitude
                                 if distance < shortestDistance then
                                     shortestDistance = distance
-                                    nearestTree = part
+                                    nearestTreePart = targetPart
                                 end
                             end
                         end
                     end
                     
-                    -- Jika pohon ditemukan, dekatkan posisi karakter di sampingnya
-                    if nearestTree then
-                        character.HumanoidRootPart.CFrame = nearestTree.CFrame * CFrame.new(0, 0, 4)
+                    -- Eksekusi gerakan jika pohon ditemukan
+                    if nearestTreePart then
+                        -- Memindahkan karakter ke samping pohon (jarak aman 3 stud)
+                        character.HumanoidRootPart.CFrame = nearestTreePart.CFrame * CFrame.new(0, 0, 3)
                     else
-                        warn("Tidak ada 'Celestial Tree' yang ditemukan di Workspace!")
+                        -- Jika nama model pohonnya berbeda, script akan memindai folder "Celestial" langsung jika ada
+                        local zoneCelestial = workspace:FindFirstChild("Celestial", true)
+                        if zoneCelestial then
+                            -- Cari part apa saja di dalam folder Celestial yang memiliki nama Tree
+                            for _, subObj in pairs(zoneCelestial:GetDescendants()) do
+                                if string.match(string.lower(subObj.Name), "tree") and subObj:IsA("BasePart") then
+                                        local distance = (character.HumanoidRootPart.Position - subObj.Position).Magnitude
+                                        if distance < shortestDistance then
+                                            shortestDistance = distance
+                                            nearestTreePart = subObj
+                                        end
+                                end
+                            end
+                            if nearestTreePart then
+                                character.HumanoidRootPart.CFrame = nearestTreePart.CFrame * CFrame.new(0, 0, 3)
+                            end
+                        end
                     end
                 end
-                task.wait(0.5) -- Loop pencarian pohon terdekat berjalan setiap 0.5 detik
+                task.wait(0.3) -- Dipercepat agar respon berpindah ke pohon berikutnya lebih sigap
             end
         end)
     else
@@ -203,4 +222,4 @@ GoTreeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
-print("Panel Celestial Helper Terupdate Berhasil Dimuat!")
+print("Panel Celestial Helper v3.1 Berhasil Dimuat!")
